@@ -1,0 +1,39 @@
+Build a frontend-only web app using plain HTML, CSS and JavaScript (no build step, no backend, no framework). Files: index.html, style.css, app.js. It must run on GitHub Pages and in the latest Google Chrome.
+
+Load pdf-lib from a CDN with a pinned version:
+https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js
+
+APP: "Tender Document Package Builder". It helps office staff turn uploaded PDFs into one checked, correctly ordered PDF package.
+
+INPUT FORMAT (requirements.json):
+{ "tender": { "tender_id", "title", "procuring_entity", "bidder", "submission_deadline" (YYYY-MM-DD) },
+  "requirements": [ { "id", "order", "title_en", "title_bn", "mandatory", "has_expiry" } ] }
+Never hardcode any tender data. Everything comes from the loaded JSON, because the app will be tested with a different pack.
+
+FEATURES:
+1. Load requirements: a file input to open requirements.json. Show tender details and the requirement list sorted by "order". Show an invalid-file message if the JSON is malformed.
+2. Upload PDFs: multiple file input plus drag and drop. Show file name and page count for each file (use pdf-lib PDFDocument.load). Reject non-PDF files with a clear message. Each file has a Remove button. If a PDF is damaged or password protected, show a clear message and do not crash.
+3. Matching: for each requirement, a dropdown listing the uploaded files. One requirement gets at most one file and one file goes to at most one requirement (hide or disable files already used elsewhere). The user can change or clear a match at any time. Removing a file clears its match.
+4. Expiry date: if a requirement has has_expiry = true and a file is matched, show a date input for the expiry date.
+5. Status for every requirement, recomputed instantly after every change. Exactly one of:
+   - Missing: mandatory, no file matched (blocks)
+   - Expiry date needed: has_expiry, file matched, no date entered (blocks)
+   - Expired: expiry date is strictly before submission_deadline (blocks)
+   - Not provided: optional, no file matched (does not block)
+   - OK: file matched and (if has_expiry) expiry date >= submission_deadline (does not block)
+   A document expiring on the same day as the deadline is OK. Compare dates as YYYY-MM-DD strings. Use color-coded badges.
+   Edge case: an optional document with has_expiry that has a file matched follows the expiry rules too.
+6. Duplicates: compute SHA-256 of each uploaded file with crypto.subtle.digest. Files with identical content are marked "Duplicate" in the uploaded files list, naming the other file(s). Do not allow duplicate files to be matched to different requirements: if one of them is already matched, the other cannot be matched anywhere.
+7. Generate button: disabled while any requirement has a blocking status. Show a visible list explaining why (for example "Trade License: Expired"). Also disabled if nothing has been loaded.
+8. Package PDF (use pdf-lib), strictly:
+   - Page 1 is a cover page in English using the StandardFonts.Helvetica font. It shows: Tender ID, Title, Procuring Entity, Bidder, Submission Deadline, Date package was made (today, YYYY-MM-DD), and the numbered list of included documents in order (use title_en). Skip optional documents with no file. Never write non-Latin characters into the PDF, because the standard font cannot encode them.
+   - Then all pages of each matched file in original order, sorted by requirement "order".
+   - Every page, including the cover, gets a footer centered at the bottom: "<tender_id> | Page X of Y" where Y is the total page count of the final package.
+   - The footer must not cover document content: for each source page, embed it (embedPdf / embedPage) onto a new page that is taller than the original by 36 points, draw the original at y = 36, and draw the footer (size 10, dark gray) in the added strip. Make the cover page the same size (A4) with the same footer strip.
+9. Download: after generating, download the file named <tender_id>_Package.pdf using a Blob and an anchor element.
+10. Two languages: a language switch (Bangla / English) in the header. All labels, buttons, statuses, error messages and instructions must exist in both languages. Requirement names use title_bn or title_en according to the selected language. Keep all UI strings in a single translations object with keys "en" and "bn". Remember the chosen language in localStorage. Use a font stack that renders Bangla, for example "Noto Sans Bengali", "Nirmala UI", sans-serif.
+11. UI: simple, clean, responsive, usable by a non-technical office worker. A short step-by-step instruction block at the top (Step 1 load requirements, Step 2 upload files, Step 3 match and enter expiry dates, Step 4 generate). Use sections with clear headings.
+
+CODE QUALITY: professional, well-structured, small functions, clear English names and English comments only. Keep application state in one object and re-render after each change. Do not put any API keys or secrets in the code. Escape any text inserted into the DOM.
+
+Give me the complete contents of index.html, style.css and app.js.
